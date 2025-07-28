@@ -6,3 +6,5 @@ obj/
 *.sln.docstates 
 TestResults/ 
 *.log 
+LibraryManagement2.API/Logs/
+
