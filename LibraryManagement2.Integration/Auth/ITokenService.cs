@@ -1,9 +1,10 @@
-﻿using LibraryManagement2.Data.Entities;
+﻿
+using LibraryManagement2.Shared.DTOs;
 
 namespace LibraryManagement2.Integration.Auth
 {
     public interface ITokenService
     {
-        string GenerateToken(User user);
+        string GenerateToken(UserTokenDto user);
     }
 }

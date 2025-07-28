@@ -1,7 +1,5 @@
 ﻿using LibraryManagement2.API.Extensions;
 using LibraryManagement2.API.Middleware;
-using LibraryManagement2.Data.DbContext;
-using Microsoft.EntityFrameworkCore;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -10,9 +8,8 @@ builder.Host.UseSerilog((ctx, lc) => lc
     .ReadFrom.Configuration(ctx.Configuration)
     .Enrich.FromLogContext());
 
-builder.Services.AddDbContext<LibraryDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+builder.Services.AddCustomDbContext(builder.Configuration);
 builder.Services.AddProjectServices();
 builder.Services.AddJwtAuthentication(builder.Configuration);
 builder.Services.AddCustomRateLimiting();

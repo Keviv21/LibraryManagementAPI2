@@ -6,6 +6,8 @@ namespace LibraryManagement2.Business.Interfaces
     public interface IUserService
     {
         Task<(bool Success, string Message)> RegisterUserAsync(RegisterDto request);
-        Task<(bool Success, string Message, User? User)> LoginUserAsync(string username, string password);
+
+        // Now also returns Token (string?)
+        Task<(bool Success, string Message, string? Token, User? User)> LoginUserAsync(string username, string password);
     }
 }

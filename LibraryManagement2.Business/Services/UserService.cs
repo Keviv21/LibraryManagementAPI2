@@ -1,6 +1,7 @@
 ﻿using LibraryManagement2.Business.Interfaces;
 using LibraryManagement2.Data.Entities;
 using LibraryManagement2.Data.Repositories.Interfaces;
+using LibraryManagement2.Integration.Auth;
 using LibraryManagement2.Shared.DTOs;
 using Microsoft.AspNetCore.Identity;
 
@@ -10,10 +11,14 @@ namespace LibraryManagement2.Business.Services
     {
         private readonly IUserRepository _userRepository;
         private readonly PasswordHasher<User> _passwordHasher;
+        private readonly ITokenService _tokenService;
 
-        public UserService(IUserRepository userRepository)
+        public UserService(
+            IUserRepository userRepository,
+            ITokenService tokenService)
         {
             _userRepository = userRepository;
+            _tokenService = tokenService;
             _passwordHasher = new PasswordHasher<User>();
         }
 
@@ -35,17 +40,25 @@ namespace LibraryManagement2.Business.Services
             return (true, "User registered successfully.");
         }
 
-        public async Task<(bool Success, string Message, User? User)> LoginUserAsync(string username, string password)
+        public async Task<(bool Success, string Message, string? Token, User? User)> LoginUserAsync(string username, string password)
         {
             var user = await _userRepository.GetByUsernameAsync(username);
             if (user == null)
-                return (false, "Invalid username or password.", null);
+                return (false, "Invalid username or password.", null, null);
 
             var result = _passwordHasher.VerifyHashedPassword(user, user.Password, password);
-            if (result == PasswordVerificationResult.Success)
-                return (true, "Login successful.", user);
+            if (result != PasswordVerificationResult.Success)
+                return (false, "Invalid username or password.", null, null);
 
-            return (false, "Invalid username or password.", null);
+            var tokenDto = new UserTokenDto
+            {
+                Id = user.Id,
+                Username = user.Username,
+                Role = user.Role
+            };
+
+            var token = _tokenService.GenerateToken(tokenDto);
+            return (true, "Login successful.", token, user);
         }
     }
 }

@@ -12,7 +12,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\LibraryManagement2.Business\LibraryManagement2.Business.csproj" />
     <ProjectReference Include="..\LibraryManagement2.Data\LibraryManagement2.Data.csproj" />
     <ProjectReference Include="..\LibraryManagement2.Shared\LibraryManagement2.Shared.csproj" />
   </ItemGroup>

@@ -1,5 +1,4 @@
 ﻿using LibraryManagement2.Business.Interfaces;
-using LibraryManagement2.Integration.Auth;
 using LibraryManagement2.Shared.DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -12,21 +11,17 @@ namespace LibraryManagement2.API.Controllers
     public class AuthController : ControllerBase
     {
         private readonly IUserService _userService;
-        private readonly ITokenService _tokenService;
         private readonly ILogger<AuthController> _logger;
 
-        public AuthController(IUserService userService, ITokenService tokenService, ILogger<AuthController> logger)
+        public AuthController(IUserService userService, ILogger<AuthController> logger)
         {
             _userService = userService;
-            _tokenService = tokenService;
             _logger = logger;
         }
 
         /// <summary>
         /// Registers a new user.
         /// </summary>
-        /// <param name="request">The user registration details.</param>
-        /// <returns>Success or failure message.</returns>
         [HttpPost("register")]
         [AllowAnonymous]
         [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
@@ -51,8 +46,6 @@ namespace LibraryManagement2.API.Controllers
         /// <summary>
         /// Authenticates the user and returns a JWT token.
         /// </summary>
-        /// <param name="request">Login credentials.</param>
-        /// <returns>JWT token and user info if login succeeds.</returns>
         [HttpPost("login")]
         [EnableRateLimiting("fixed")]
         [AllowAnonymous]
@@ -64,26 +57,20 @@ namespace LibraryManagement2.API.Controllers
         {
             _logger.LogInformation("Login attempt for user: {Username}", request.Username);
 
-            var (success, message, user) = await _userService.LoginUserAsync(request.Username, request.Password);
-            if (!success || user == null)
+            var (success, message, token, userTokenDto) = await _userService.LoginUserAsync(request.Username, request.Password);
+
+            if (!success || userTokenDto== null || string.IsNullOrWhiteSpace(token))
             {
                 _logger.LogWarning("Login failed for user: {Username}", request.Username);
                 return Unauthorized(new { message });
             }
 
-            var token = _tokenService.GenerateToken(user);
-
-            _logger.LogInformation("Login successful for user: {Username}", user.Username);
+            _logger.LogInformation("Login successful for user: {Username}", userTokenDto.Username);
 
             return Ok(new
             {
                 token,
-                user = new
-                {
-                    user.Id,
-                    user.Username,
-                    user.Role
-                }
+                user = userTokenDto
             });
         }
     }
