@@ -1,4 +1,4 @@
-﻿namespace LibraryManagement2.Shared.DTOs
+﻿namespace LibraryManagement2.Shared.DTO.MainData
 {
     public class LoginDto
     {

@@ -1,7 +1,6 @@
 ﻿using AutoMapper;
 using LibraryManagement2.Data.Entities;
-using LibraryManagement2.Shared.DTOs;
-
+using LibraryManagement2.Shared.DTO.MainData;
 
 namespace LibraryManagement2.AutoMapper.Profiles
 {

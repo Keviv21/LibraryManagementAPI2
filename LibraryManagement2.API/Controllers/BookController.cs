@@ -1,5 +1,7 @@
 ﻿using LibraryManagement2.Business.Interfaces;
-using LibraryManagement2.Shared.DTOs;
+using LibraryManagement2.Shared.DTO.MainData;
+using LibraryManagement2.Shared.Pagination;
+using LibraryManagement2.Shared.Response;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -25,30 +27,37 @@ namespace LibraryManagement2.API.Controllers
         /// Retrieves a list of all books available in the system.
         /// </summary>
         [HttpGet]
-        [ProducesResponseType(typeof(IEnumerable<BookDto>), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<ActionResult<IEnumerable<BookDto>>> GetAllBooks()
+        [ProducesResponseType(typeof(ServiceOperationResult<IEnumerable<BookDto>>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> GetAllBooks()
         {
-            var books = await _bookService.GetAllAsync();
-            return Ok(books);
+            var result = await _bookService.GetAllAsync();
+
+            if (!result.IsSuccess)
+                return BadRequest(result.Message);
+
+            return Ok(result);
         }
 
         /// <summary>
         /// Retrieves a specific book by its ID.
         /// </summary>
         [HttpGet("{id}")]
-        [ProducesResponseType(typeof(BookDto), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        public async Task<ActionResult<BookDto>> GetBook(int id)
+        [ProducesResponseType(typeof(ServiceOperationResult<BookDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> GetBook(int id)
         {
-            var book = await _bookService.GetByIdAsync(id);
-            if (book == null)
-                return NotFound();
+            var result = await _bookService.GetByIdAsync(id);
 
-            return Ok(book);
+            if (!result.IsSuccess)
+                return NotFound(result.Message);
+
+            return Ok(result);
         }
 
         /// <summary>
@@ -56,18 +65,23 @@ namespace LibraryManagement2.API.Controllers
         /// </summary>
         [HttpPost]
         [Authorize(Roles = "Admin")]
-        [ProducesResponseType(typeof(BookDto), StatusCodes.Status201Created)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status403Forbidden)]
-        [ProducesResponseType(StatusCodes.Status409Conflict)]
-        public async Task<ActionResult> CreateBook([FromBody] BookDto bookDto)
+        [ProducesResponseType(typeof(ServiceOperationResult<BookDto>), StatusCodes.Status201Created)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status409Conflict)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> CreateBook([FromBody] BookDto bookDto)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            await _bookService.AddAsync(bookDto);
-            return StatusCode(201);
+            var result = await _bookService.AddAsync(bookDto);
+
+            if (!result.IsSuccess)
+                return BadRequest(result.Message);
+
+            return StatusCode(201, result);
         }
 
         /// <summary>
@@ -75,22 +89,24 @@ namespace LibraryManagement2.API.Controllers
         /// </summary>
         [HttpPut("{id}")]
         [Authorize(Roles = "Admin")]
-        [ProducesResponseType(StatusCodes.Status204NoContent)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status403Forbidden)]
-        public async Task<ActionResult> UpdateBook(int id, [FromBody] BookDto bookDto)
+        [ProducesResponseType(typeof(ServiceOperationResult<BookDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status409Conflict)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> UpdateBook(int id, [FromBody] BookDto bookDto)
         {
             if (id != bookDto.Id)
                 return BadRequest("Book ID mismatch");
 
-            var existingBook = await _bookService.GetByIdAsync(id);
-            if (existingBook == null)
-                return NotFound();
+            var result = await _bookService.UpdateAsync(bookDto);
 
-            await _bookService.UpdateAsync(bookDto);
-            return NoContent();
+            if (!result.IsSuccess)
+                return NotFound(result.Message);
+
+            return Ok(result);
         }
 
         /// <summary>
@@ -98,18 +114,38 @@ namespace LibraryManagement2.API.Controllers
         /// </summary>
         [HttpDelete("{id}")]
         [Authorize(Roles = "Admin")]
-        [ProducesResponseType(StatusCodes.Status204NoContent)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status403Forbidden)]
-        public async Task<ActionResult> DeleteBook(int id)
+        [ProducesResponseType(typeof(ServiceOperationResult<string>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> DeleteBook(int id)
         {
-            var book = await _bookService.GetByIdAsync(id);
-            if (book == null)
-                return NotFound();
+            var result = await _bookService.DeleteAsync(id);
 
-            await _bookService.DeleteAsync(id);
-            return NoContent();
+            if (!result.IsSuccess)
+                return NotFound(result.Message);
+
+            return Ok(result);
+        }
+
+        /// <summary>
+        /// Retrieves a paginated list of books.
+        /// </summary>
+        [HttpGet("paginated")]
+        [ProducesResponseType(typeof(ServiceOperationResult<PaginatedResult<BookDto>>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> GetPaginatedBooks([FromQuery] PaginationParams paginationParams)
+        {
+            var result = await _bookService.GetPaginatedBooksAsync(paginationParams);
+
+            if (!result.IsSuccess)
+                return BadRequest(result.Message);
+
+            return Ok(result);
         }
     }
 }

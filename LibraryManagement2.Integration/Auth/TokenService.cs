@@ -1,4 +1,4 @@
-﻿using LibraryManagement2.Shared.DTOs;
+﻿using LibraryManagement2.Shared.DTO.MainData;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;

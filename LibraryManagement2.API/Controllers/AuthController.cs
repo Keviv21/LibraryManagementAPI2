@@ -1,77 +1,62 @@
-﻿using LibraryManagement2.Business.Interfaces;
-using LibraryManagement2.Shared.DTOs;
-using Microsoft.AspNetCore.Authorization;
+﻿
+using LibraryManagement2.Business.Interfaces;
+using LibraryManagement2.Shared.DTO.MainData;
+using LibraryManagement2.Shared.Response;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 
 namespace LibraryManagement2.API.Controllers
 {
-    [ApiController]
     [Route("api/[controller]")]
+    [ApiController]
     public class AuthController : ControllerBase
     {
         private readonly IUserService _userService;
-        private readonly ILogger<AuthController> _logger;
 
-        public AuthController(IUserService userService, ILogger<AuthController> logger)
+        public AuthController(IUserService userService)
         {
             _userService = userService;
-            _logger = logger;
         }
 
         /// <summary>
-        /// Registers a new user.
+        /// Register a new user.
         /// </summary>
+        /// <param name="request">User registration data</param>
+        /// <returns>Success message or errors</returns>
         [HttpPost("register")]
-        [AllowAnonymous]
-        [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
-        [ProducesResponseType(typeof(object), StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(typeof(string), StatusCodes.Status500InternalServerError)]
+        [ProducesResponseType(typeof(ServiceOperationResult<string>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ServiceOperationResult<string>), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ServiceOperationResult<string>), StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> Register([FromBody] RegisterDto request)
         {
-            _logger.LogInformation("Registration attempt for username: {Username}", request.Username);
+            var result = await _userService.RegisterUserAsync(request);
 
-            var (success, message) = await _userService.RegisterUserAsync(request);
+            if (!result.IsSuccess)
+                return BadRequest(result);
 
-            if (!success)
-            {
-                _logger.LogWarning("Registration failed for username: {Username}", request.Username);
-                return BadRequest(new { message });
-            }
-
-            _logger.LogInformation("Registration successful for username: {Username}", request.Username);
-            return Ok(new { message });
+            return Ok(result);
         }
 
         /// <summary>
-        /// Authenticates the user and returns a JWT token.
+        /// Login an existing user.
         /// </summary>
+        /// <param name="request">User login credentials</param>
+        /// <returns>JWT token on success</returns>
         [HttpPost("login")]
-        [EnableRateLimiting("fixed")]
-        [AllowAnonymous]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
+        [EnableRateLimiting("fixed")] // 🔒 Apply rate limiting policy
+        [ProducesResponseType(typeof(ServiceOperationResult<string>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ServiceOperationResult<string>), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ServiceOperationResult<string>), StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(typeof(ServiceOperationResult<string>), StatusCodes.Status429TooManyRequests)]
+        [ProducesResponseType(typeof(ServiceOperationResult<string>), StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> Login([FromBody] LoginDto request)
         {
-            _logger.LogInformation("Login attempt for user: {Username}", request.Username);
+            var result = await _userService.LoginUserAsync(request.Username, request.Password);
 
-            var (success, message, token, userTokenDto) = await _userService.LoginUserAsync(request.Username, request.Password);
+            if (!result.IsSuccess)
+                return Unauthorized(result);
 
-            if (!success || userTokenDto== null || string.IsNullOrWhiteSpace(token))
-            {
-                _logger.LogWarning("Login failed for user: {Username}", request.Username);
-                return Unauthorized(new { message });
-            }
-
-            _logger.LogInformation("Login successful for user: {Username}", userTokenDto.Username);
-
-            return Ok(new
-            {
-                token,
-                user = userTokenDto
-            });
+            return Ok(result);
         }
     }
 }

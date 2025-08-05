@@ -1,8 +1,10 @@
-﻿using LibraryManagement2.Business.Interfaces;
+﻿using AutoMapper;
+using LibraryManagement2.Business.Interfaces;
 using LibraryManagement2.Data.Entities;
 using LibraryManagement2.Data.Repositories.Interfaces;
 using LibraryManagement2.Integration.Auth;
-using LibraryManagement2.Shared.DTOs;
+using LibraryManagement2.Shared.DTO.MainData;
+using LibraryManagement2.Shared.Response;
 using Microsoft.AspNetCore.Identity;
 
 namespace LibraryManagement2.Business.Services
@@ -10,55 +12,61 @@ namespace LibraryManagement2.Business.Services
     public class UserService : IUserService
     {
         private readonly IUserRepository _userRepository;
-        private readonly PasswordHasher<User> _passwordHasher;
+        private readonly IPasswordHasher<User> _passwordHasher;
         private readonly ITokenService _tokenService;
+        private readonly IMapper _mapper;
 
         public UserService(
             IUserRepository userRepository,
-            ITokenService tokenService)
+            IPasswordHasher<User> passwordHasher,
+            ITokenService tokenService,
+            IMapper mapper)
         {
             _userRepository = userRepository;
+            _passwordHasher = passwordHasher;
             _tokenService = tokenService;
-            _passwordHasher = new PasswordHasher<User>();
+            _mapper = mapper;
         }
 
-        public async Task<(bool Success, string Message)> RegisterUserAsync(RegisterDto request)
+        public async Task<ServiceOperationResult<RegisterResponseDto>> RegisterUserAsync(RegisterDto request)
         {
             var existingUser = await _userRepository.GetByUsernameAsync(request.Username);
             if (existingUser != null)
-                return (false, "Username already exists.");
-
-            var newUser = new User
             {
-                Username = request.Username,
-                Role = request.Role
-            };
+                return ServiceOperationResult<RegisterResponseDto>.FailureResult("User already exists.");
+            }
 
-            newUser.Password = _passwordHasher.HashPassword(newUser, request.Password);
+            var user = _mapper.Map<User>(request);
 
-            await _userRepository.AddUserAsync(newUser);
-            return (true, "User registered successfully.");
+            user.Password = _passwordHasher.HashPassword(null!, request.Password);
+         
+
+            await _userRepository.AddUserAsync(user);
+            var responseDto = _mapper.Map<RegisterResponseDto>(user);
+
+
+            return ServiceOperationResult<RegisterResponseDto>.SuccessResult(responseDto, "User registered successfully.");
         }
 
-        public async Task<(bool Success, string Message, string? Token, User? User)> LoginUserAsync(string username, string password)
+        public async Task<ServiceOperationResult<string>> LoginUserAsync(string username, string password)
         {
             var user = await _userRepository.GetByUsernameAsync(username);
             if (user == null)
-                return (false, "Invalid username or password.", null, null);
-
-            var result = _passwordHasher.VerifyHashedPassword(user, user.Password, password);
-            if (result != PasswordVerificationResult.Success)
-                return (false, "Invalid username or password.", null, null);
-
-            var tokenDto = new UserTokenDto
             {
-                Id = user.Id,
-                Username = user.Username,
-                Role = user.Role
-            };
+                return ServiceOperationResult<string>.FailureResult("Invalid username or password.");
+            }
 
-            var token = _tokenService.GenerateToken(tokenDto);
-            return (true, "Login successful.", token, user);
+            var result = _passwordHasher.VerifyHashedPassword(null!, user.Password, password);
+            if (result == PasswordVerificationResult.Failed)
+            {
+                return ServiceOperationResult<string>.FailureResult("Invalid username or password.");
+            }
+
+            var userDto = _mapper.Map<UserTokenDto>(user);
+
+            var token = _tokenService.GenerateToken(userDto);
+
+            return ServiceOperationResult<string>.SuccessResult(token, "Login successful.");
         }
     }
 }

@@ -2,7 +2,9 @@
 using LibraryManagement2.Business.Interfaces;
 using LibraryManagement2.Data.Entities;
 using LibraryManagement2.Data.Repositories.Interfaces;
-using LibraryManagement2.Shared.DTOs;
+using LibraryManagement2.Shared.DTO.MainData;
+using LibraryManagement2.Shared.Pagination;
+using LibraryManagement2.Shared.Response;
 
 namespace LibraryManagement2.Business.Services
 {
@@ -17,33 +19,70 @@ namespace LibraryManagement2.Business.Services
             _mapper = mapper;
         }
 
-        public async Task<IEnumerable<BookDto>> GetAllAsync()
+        public async Task<ServiceOperationResult<IEnumerable<BookDto>>> GetAllAsync()
         {
             var books = await _bookRepository.GetAllAsync();
-            return _mapper.Map<IEnumerable<BookDto>>(books);
+            var bookDtos = _mapper.Map<IEnumerable<BookDto>>(books);
+            return ServiceOperationResult<IEnumerable<BookDto>>.SuccessResult(bookDtos,"List of all the books in this library");
         }
 
-        public async Task<BookDto?> GetByIdAsync(int id)
+        public async Task<ServiceOperationResult<BookDto>> GetByIdAsync(int id)
         {
             var book = await _bookRepository.GetByIdAsync(id);
-            return book == null ? null : _mapper.Map<BookDto>(book);
+
+            if (book == null)
+                return ServiceOperationResult<BookDto>.FailureResult("Book not found.");
+
+            var bookDto = _mapper.Map<BookDto>(book);
+            return ServiceOperationResult<BookDto>.SuccessResult(bookDto,$"Book with id = {id} ");
         }
 
-        public async Task AddAsync(BookDto bookDto)
+        public async Task<ServiceOperationResult<BookDto>> AddAsync(BookDto bookDto)
         {
             var book = _mapper.Map<Book>(bookDto);
             await _bookRepository.AddAsync(book);
+            var resultDto = _mapper.Map<BookDto>(book);
+            return ServiceOperationResult<BookDto>.SuccessResult(resultDto,"Book added successfully.");
         }
 
-        public async Task UpdateAsync(BookDto bookDto)
+        public async Task<ServiceOperationResult<BookDto>> UpdateAsync(BookDto bookDto)
         {
-            var book = _mapper.Map<Book>(bookDto);
-            await _bookRepository.UpdateAsync(book);
+            var existingBook = await _bookRepository.GetByIdAsync(bookDto.Id);
+
+            if (existingBook == null)
+                return ServiceOperationResult<BookDto>.FailureResult("Book not found.");
+
+            var updatedBook = _mapper.Map<Book>(bookDto);
+            await _bookRepository.UpdateAsync(updatedBook);
+
+            return ServiceOperationResult<BookDto>.SuccessResult(bookDto,"Book updated successfully.");
         }
 
-        public async Task DeleteAsync(int id)
+        public async Task<ServiceOperationResult<string?>> DeleteAsync(int id)
         {
+            var existingBook = await _bookRepository.GetByIdAsync(id);
+
+            if (existingBook == null)
+                return ServiceOperationResult<string?>.FailureResult("Book not found.");
+
             await _bookRepository.DeleteAsync(id);
+            return ServiceOperationResult<string?>.SuccessResult(null,"Book deleted successfully.");
+        }
+
+        public async Task<ServiceOperationResult<PaginatedResult<BookDto>>> GetPaginatedBooksAsync(PaginationParams paginationParams)
+        {
+            var result = await _bookRepository.GetPaginatedBooksAsync(paginationParams);
+
+            var mappedItems = _mapper.Map<List<BookDto>>(result.Items);
+
+            var mappedResult = new PaginatedResult<BookDto>(
+                mappedItems,
+                result.TotalCount,
+                result.PageNumber,
+                result.PageSize
+            );
+
+            return ServiceOperationResult<PaginatedResult<BookDto>>.SuccessResult(mappedResult,"Books shown in pages");
         }
     }
 }

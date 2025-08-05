@@ -15,4 +15,8 @@
     </PackageReference>
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\LibraryManagement2.Shared\LibraryManagement2.Shared.csproj" />
+  </ItemGroup>
+
 </Project>
